@@ -1,20 +1,13 @@
 import axios from 'axios';
 
-const client = axios.create({
-  baseURL: '/api',
-});
+const client = axios.create({ baseURL: '/api' });
 
-// Attach the JWT to every outgoing request, if one is stored.
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('quiz_engine_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// If the backend ever returns 401 (expired/invalid token), clear the
-// stored session so the app doesn't sit in a broken half-logged-in state.
 client.interceptors.response.use(
   (response) => response,
   (error) => {

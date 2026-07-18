@@ -1,16 +1,9 @@
 import { useState } from 'react';
-import { LayoutDashboard, Upload, FileText, BarChart3 } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
+import { instructorNavGroups } from '../../components/instructorNav';
 import { Button, Card, Input, Select, Badge, Spinner } from '../../components/ui';
 import { generateQuestions } from '../../api/questions';
 import { UploadCloud, CheckCircle2, XCircle } from 'lucide-react';
-
-const navItems = [
-  { to: '/instructor', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/instructor/generate', label: 'Generate quiz', icon: Upload },
-  { to: '/instructor/questions', label: 'My questions', icon: FileText },
-  { to: '/instructor/analytics', label: 'Analytics', icon: BarChart3 },
-];
 
 export default function GenerateQuiz() {
   const [file, setFile] = useState(null);
@@ -44,7 +37,7 @@ export default function GenerateQuiz() {
   }
 
   return (
-    <DashboardShell navItems={navItems}>
+    <DashboardShell navGroups={instructorNavGroups}>
       <h1 className="font-[var(--font-display)] text-2xl font-semibold mb-1.5">Generate a quiz</h1>
       <p className="text-[var(--color-text-muted)] mb-8">
         Upload course material as a PDF. Questions are generated grounded strictly in the source,
@@ -62,23 +55,12 @@ export default function GenerateQuiz() {
               <span className="text-sm text-[var(--color-text-muted)] truncate">
                 {file ? file.name : 'Click to choose a PDF file'}
               </span>
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files[0])}
-              />
+              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Course ID"
-              required
-              placeholder="e.g. psych-101"
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-            />
+            <Input label="Course ID" required placeholder="e.g. psych-101" value={courseId} onChange={(e) => setCourseId(e.target.value)} />
             <Select label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
               <option value="mixed">Mixed (recommended)</option>
               <option value="easy">Easy</option>
@@ -117,13 +99,7 @@ export default function GenerateQuiz() {
           {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
 
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? (
-              <>
-                <Spinner size={16} /> Generating — this can take a minute…
-              </>
-            ) : (
-              'Generate questions'
-            )}
+            {loading ? (<><Spinner size={16} /> Generating — this can take a minute…</>) : 'Generate questions'}
           </Button>
         </form>
       </Card>
@@ -136,10 +112,7 @@ export default function GenerateQuiz() {
           </div>
           <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
             {result.questions.map((q) => (
-              <div
-                key={q.id}
-                className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[var(--color-surface-raised)]"
-              >
+              <div key={q.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[var(--color-surface-raised)]">
                 <CheckCircle2 size={16} className="text-[var(--color-accent)] mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm truncate">{q.questionText}</p>
@@ -153,8 +126,7 @@ export default function GenerateQuiz() {
           {result.generated < result.requested && (
             <p className="text-xs text-[var(--color-text-muted)] mt-4 flex items-center gap-1.5">
               <XCircle size={14} className="text-[var(--color-warn)]" />
-              {result.requested - result.generated} question(s) were rejected by the self-critique gate
-              and not saved — check the backend logs for the specific reasons.
+              {result.requested - result.generated} question(s) were rejected by the self-critique gate and not saved.
             </p>
           )}
         </Card>

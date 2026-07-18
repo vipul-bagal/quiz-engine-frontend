@@ -33,8 +33,3 @@ export async function deleteQuestion(id) {
   const { data } = await client.delete(`/questions/${id}`);
   return data;
 }
-
-export async function getMyAnalytics() {
-  const { data } = await client.get('/analytics/mine');
-  return data;
-}

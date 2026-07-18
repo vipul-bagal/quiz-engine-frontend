@@ -1,76 +1,79 @@
 import { useEffect, useState, useCallback } from 'react';
-import { LayoutDashboard, Upload, FileText, BarChart3, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
+import { instructorNavGroups } from '../../components/instructorNav';
 import { Button, Card, Input, Select, Badge, Spinner } from '../../components/ui';
 import { getMyQuestions, getQuestionsByCourse, updateQuestion, deleteQuestion } from '../../api/questions';
-
-const navItems = [
-  { to: '/instructor', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/instructor/generate', label: 'Generate quiz', icon: Upload },
-  { to: '/instructor/questions', label: 'My questions', icon: FileText },
-  { to: '/instructor/analytics', label: 'Analytics', icon: BarChart3 },
-];
 
 const difficultyTone = { easy: 'accent', medium: 'warn', hard: 'danger' };
 
 export default function MyQuestions() {
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
   const [pageData, setPageData] = useState(null);
-  const [courseFilter, setCourseFilter] = useState('');
-  const [filteredList, setFilteredList] = useState(null); // non-null when a course filter is active
+  const [courseFilter, setCourseFilter] = useState(searchParams.get('course') || '');
+  const [filteredList, setFilteredList] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [error, setError] = useState('');
 
   const loadPage = useCallback(async (pageNum) => {
     setLoading(true);
     try {
       const data = await getMyQuestions({ page: pageNum, size: 10 });
       setPageData(data);
-    } catch (err) {
-      setError('Could not load questions.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (!courseFilter) loadPage(page);
-  }, [page, courseFilter, loadPage]);
-
-  async function handleCourseFilter(e) {
-    e.preventDefault();
-    if (!courseFilter.trim()) {
+  const runCourseFilter = useCallback(async (course) => {
+    if (!course.trim()) {
       setFilteredList(null);
       loadPage(0);
       return;
     }
     setLoading(true);
     try {
-      const data = await getQuestionsByCourse(courseFilter.trim());
+      const data = await getQuestionsByCourse(course.trim());
       setFilteredList(data);
-    } catch (err) {
-      setError('Could not load questions for that course.');
     } finally {
       setLoading(false);
     }
+  }, [loadPage]);
+
+  useEffect(() => {
+    if (courseFilter) {
+      runCourseFilter(courseFilter);
+    } else {
+      loadPage(page);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  useEffect(() => {
+    if (searchParams.get('course')) runCourseFilter(searchParams.get('course'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleFilterSubmit(e) {
+    e.preventDefault();
+    runCourseFilter(courseFilter);
   }
 
   function clearFilter() {
     setCourseFilter('');
     setFilteredList(null);
     setPage(0);
+    loadPage(0);
   }
 
   async function handleDelete(id) {
     if (!confirm('Delete this question? This cannot be undone.')) return;
     try {
       await deleteQuestion(id);
-      if (filteredList) {
-        setFilteredList(filteredList.filter((q) => q.id !== id));
-      } else {
-        loadPage(page);
-      }
+      if (filteredList) setFilteredList(filteredList.filter((q) => q.id !== id));
+      else loadPage(page);
     } catch (err) {
       alert(err.response?.data?.error || 'Could not delete question.');
     }
@@ -79,20 +82,13 @@ export default function MyQuestions() {
   const questions = filteredList ?? pageData?.content ?? [];
 
   return (
-    <DashboardShell navItems={navItems}>
+    <DashboardShell navGroups={instructorNavGroups}>
       <h1 className="font-[var(--font-display)] text-2xl font-semibold mb-1.5">My questions</h1>
-      <p className="text-[var(--color-text-muted)] mb-6">
-        Review, edit, or remove questions you've generated.
-      </p>
+      <p className="text-[var(--color-text-muted)] mb-6">Review, edit, or remove questions you've generated.</p>
 
-      <form onSubmit={handleCourseFilter} className="flex items-end gap-3 mb-6">
+      <form onSubmit={handleFilterSubmit} className="flex items-end gap-3 mb-6">
         <div className="flex-1 max-w-xs">
-          <Input
-            label="Filter by course ID"
-            placeholder="e.g. psych-101"
-            value={courseFilter}
-            onChange={(e) => setCourseFilter(e.target.value)}
-          />
+          <Input label="Filter by course ID" placeholder="e.g. psych-101" value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} />
         </div>
         <Button type="submit" variant="secondary">Filter</Button>
         {filteredList && (
@@ -102,16 +98,10 @@ export default function MyQuestions() {
         )}
       </form>
 
-      {loading && (
-        <div className="flex justify-center py-12"><Spinner /></div>
-      )}
+      {loading && <div className="flex justify-center py-12"><Spinner /></div>}
 
       {!loading && questions.length === 0 && (
-        <Card>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No questions found{filteredList ? ' for that course' : ''}. Generate a quiz to get started.
-          </p>
-        </Card>
+        <Card><p className="text-sm text-[var(--color-text-muted)]">No questions found{filteredList ? ' for that course' : ''}.</p></Card>
       )}
 
       {!loading && questions.length > 0 && (
@@ -131,16 +121,10 @@ export default function MyQuestions() {
                   <p className="text-xs text-[var(--color-text-faint)] font-mono mt-1">course: {q.courseId}</p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button
-                    onClick={() => setEditingQuestion(q)}
-                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-surface-raised)]"
-                  >
+                  <button onClick={() => setEditingQuestion(q)} className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-surface-raised)]">
                     <Pencil size={15} />
                   </button>
-                  <button
-                    onClick={() => handleDelete(q.id)}
-                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-surface-raised)]"
-                  >
+                  <button onClick={() => handleDelete(q.id)} className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-surface-raised)]">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -152,15 +136,9 @@ export default function MyQuestions() {
 
       {!filteredList && pageData && pageData.totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-6">
-          <Button variant="secondary" disabled={pageData.first} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft size={15} />
-          </Button>
-          <span className="text-sm text-[var(--color-text-muted)] font-mono">
-            {pageData.number + 1} / {pageData.totalPages}
-          </span>
-          <Button variant="secondary" disabled={pageData.last} onClick={() => setPage((p) => p + 1)}>
-            <ChevronRight size={15} />
-          </Button>
+          <Button variant="secondary" disabled={pageData.first} onClick={() => setPage((p) => p - 1)}><ChevronLeft size={15} /></Button>
+          <span className="text-sm text-[var(--color-text-muted)] font-mono">{pageData.number + 1} / {pageData.totalPages}</span>
+          <Button variant="secondary" disabled={pageData.last} onClick={() => setPage((p) => p + 1)}><ChevronRight size={15} /></Button>
         </div>
       )}
 
@@ -170,11 +148,8 @@ export default function MyQuestions() {
           onClose={() => setEditingQuestion(null)}
           onSaved={(updated) => {
             setEditingQuestion(null);
-            if (filteredList) {
-              setFilteredList(filteredList.map((q) => (q.id === updated.id ? updated : q)));
-            } else {
-              loadPage(page);
-            }
+            if (filteredList) setFilteredList(filteredList.map((q) => (q.id === updated.id ? updated : q)));
+            else loadPage(page);
           }}
         />
       )}
@@ -196,12 +171,10 @@ function EditQuestionModal({ question, onClose, onSaved }) {
 
   function toggleCorrect(idx) {
     const isMulti = question.questionType === 'MULTI_CORRECT';
-    setOptions(
-      options.map((o, i) => {
-        if (i !== idx) return isMulti ? o : { ...o, correct: false };
-        return { ...o, correct: !o.correct };
-      })
-    );
+    setOptions(options.map((o, i) => {
+      if (i !== idx) return isMulti ? o : { ...o, correct: false };
+      return { ...o, correct: !o.correct };
+    }));
   }
 
   async function handleSave() {
@@ -213,11 +186,7 @@ function EditQuestionModal({ question, onClose, onSaved }) {
     setSaving(true);
     try {
       const updated = await updateQuestion(question.id, {
-        questionText,
-        questionType: question.questionType,
-        options,
-        explanation,
-        difficulty,
+        questionText, questionType: question.questionType, options, explanation, difficulty,
       });
       onSaved(updated);
     } catch (err) {
@@ -232,9 +201,7 @@ function EditQuestionModal({ question, onClose, onSaved }) {
       <Card className="w-full max-w-lg max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-[var(--font-display)] font-semibold">Edit question</h2>
-          <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-            <X size={18} />
-          </button>
+          <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"><X size={18} /></button>
         </div>
 
         <div className="space-y-4">
@@ -251,9 +218,7 @@ function EditQuestionModal({ question, onClose, onSaved }) {
                     type="button"
                     onClick={() => toggleCorrect(idx)}
                     className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center text-xs ${
-                      opt.correct
-                        ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[#0a0f12]'
-                        : 'border-[var(--color-border)] text-transparent'
+                      opt.correct ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[#0a0f12]' : 'border-[var(--color-border)] text-transparent'
                     }`}
                   >
                     ✓
@@ -280,9 +245,7 @@ function EditQuestionModal({ question, onClose, onSaved }) {
 
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
-            </Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
           </div>
         </div>
       </Card>

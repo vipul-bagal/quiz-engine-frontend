@@ -1,15 +1,8 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Upload, FileText, BarChart3 } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
+import { instructorNavGroups } from '../../components/instructorNav';
 import { Card, Spinner } from '../../components/ui';
-import { getMyAnalytics } from '../../api/questions';
-
-const navItems = [
-  { to: '/instructor', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/instructor/generate', label: 'Generate quiz', icon: Upload },
-  { to: '/instructor/questions', label: 'My questions', icon: FileText },
-  { to: '/instructor/analytics', label: 'Analytics', icon: BarChart3 },
-];
+import { getMyAnalytics } from '../../api/analytics';
 
 function StatCard({ label, value, sub }) {
   return (
@@ -46,7 +39,7 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <DashboardShell navItems={navItems}>
+      <DashboardShell navGroups={instructorNavGroups}>
         <div className="flex justify-center py-12"><Spinner /></div>
       </DashboardShell>
     );
@@ -54,13 +47,9 @@ export default function Analytics() {
 
   if (!data || data.totalQuestions === 0) {
     return (
-      <DashboardShell navItems={navItems}>
+      <DashboardShell navGroups={instructorNavGroups}>
         <h1 className="font-[var(--font-display)] text-2xl font-semibold mb-1.5">Analytics</h1>
-        <Card className="mt-6">
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No data yet — generate your first quiz to see analytics here.
-          </p>
-        </Card>
+        <Card className="mt-6"><p className="text-sm text-[var(--color-text-muted)]">No data yet — generate your first quiz to see analytics here.</p></Card>
       </DashboardShell>
     );
   }
@@ -70,21 +59,15 @@ export default function Analytics() {
   const maxCourse = Math.max(...Object.values(data.byCourse));
 
   return (
-    <DashboardShell navItems={navItems}>
+    <DashboardShell navGroups={instructorNavGroups}>
       <h1 className="font-[var(--font-display)] text-2xl font-semibold mb-1.5">Analytics</h1>
-      <p className="text-[var(--color-text-muted)] mb-6">
-        Aggregate stats across everything you've generated.
-      </p>
+      <p className="text-[var(--color-text-muted)] mb-6">Aggregate stats across everything you've generated.</p>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard label="Total questions" value={data.totalQuestions} />
         <StatCard label="Distinct concepts" value={data.totalConcepts} />
         <StatCard label="Generation batches" value={data.totalBatches} />
-        <StatCard
-          label="Critique yield"
-          value={`${Math.round(data.yieldRate * 100)}%`}
-          sub={`${data.totalGenerated} saved of ${data.totalRequested} requested`}
-        />
+        <StatCard label="Critique yield" value={`${Math.round(data.yieldRate * 100)}%`} sub={`${data.totalGenerated} saved of ${data.totalRequested} requested`} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -94,7 +77,6 @@ export default function Analytics() {
             <BreakdownBar key={diff} label={diff} count={count} max={maxDifficulty} color={difficultyColors[diff] || 'var(--color-text-muted)'} />
           ))}
         </Card>
-
         <Card>
           <h2 className="font-[var(--font-display)] font-semibold mb-4 text-sm">By course</h2>
           {Object.entries(data.byCourse).map(([course, count]) => (

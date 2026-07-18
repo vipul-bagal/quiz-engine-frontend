@@ -27,7 +27,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Ambient pulse lines in the background — echoes the signature element */}
       <div className="absolute inset-0 flex flex-col justify-around opacity-[0.06] pointer-events-none">
         {[...Array(6)].map((_, i) => (
           <ConsistencyPulse
@@ -71,9 +70,7 @@ export default function Login() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
-            {error && (
-              <p className="text-sm text-[var(--color-danger)]">{String(error)}</p>
-            )}
+            {error && <p className="text-sm text-[var(--color-danger)]">{String(error)}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>

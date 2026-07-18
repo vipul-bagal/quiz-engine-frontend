@@ -35,9 +35,7 @@ export default function Register() {
           <h1 className="font-[var(--font-display)] text-2xl font-semibold text-[var(--color-text)]">
             Create your account
           </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1.5">
-            Choose your role to get started
-          </p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1.5">Choose your role to get started</p>
         </div>
 
         <Card>
@@ -76,9 +74,7 @@ export default function Register() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
-            {error && (
-              <p className="text-sm text-[var(--color-danger)]">{String(error)}</p>
-            )}
+            {error && <p className="text-sm text-[var(--color-danger)]">{String(error)}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating account…' : 'Create account'}
             </Button>
