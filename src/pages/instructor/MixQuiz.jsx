@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Shuffle, ListChecks, Check } from 'lucide-react';
+import { Shuffle, ListChecks, Check, Star } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { instructorNavGroups } from '../../components/instructorNav';
 import { Button, Card, Input, Badge, Spinner } from '../../components/ui';
-import { getMyConcepts, createQuestionSet, getMyQuestionSets } from '../../api/questionSets';
+import { getMyConcepts, createQuestionSet, getMyQuestionSets, setQuestionSetPriority } from '../../api/questionSets';
+import { getMyCourses } from '../../api/courses';
 
 export default function MixQuiz() {
   const [mode, setMode] = useState('CONCEPT_SELECT');
   const [concepts, setConcepts] = useState(null);
+  const [courseNames, setCourseNames] = useState({});
   const [selectedConcepts, setSelectedConcepts] = useState([]);
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [totalQuestions, setTotalQuestions] = useState(30);
@@ -19,11 +21,21 @@ export default function MixQuiz() {
 
   useEffect(() => {
     getMyConcepts().then(setConcepts).catch(() => setConcepts([]));
+    getMyCourses().then((data) => {
+      const map = {};
+      data.forEach((c) => { map[c.id] = c.name; });
+      setCourseNames(map);
+    }).catch(() => setCourseNames({}));
     refreshSets();
   }, []);
 
   function refreshSets() {
     getMyQuestionSets({ page: 0, size: 10 }).then((data) => setMySets(data.content)).catch(() => setMySets([]));
+  }
+
+  async function togglePriority(set) {
+    await setQuestionSetPriority(set.id, !set.priority);
+    refreshSets();
   }
 
   const courses = concepts ? [...new Set(concepts.map((c) => c.courseId))] : [];
@@ -135,7 +147,7 @@ export default function MixQuiz() {
                         <span className="text-sm truncate">{c.conceptName}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge>{c.courseId}</Badge>
+                        <Badge>{courseNames[c.courseId] || c.courseId}</Badge>
                         <span className="text-xs text-[var(--color-text-faint)] font-mono">{c.questionCount}q</span>
                       </div>
                     </button>
@@ -163,7 +175,7 @@ export default function MixQuiz() {
                         : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-dim)]'
                     }`}
                   >
-                    {courseId}
+                    {courseNames[courseId] || courseId}
                   </button>
                 ))}
               </div>
@@ -212,12 +224,21 @@ export default function MixQuiz() {
           {mySets.map((s) => (
             <Card key={s.id} className="!p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">{s.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{s.title}</p>
+                  {s.priority && <Badge tone="warn">priority</Badge>}
+                </div>
                 <p className="text-xs text-[var(--color-text-faint)] font-mono mt-0.5">
-                  {s.questionCount} questions · {s.assemblyMode === 'CONCEPT_SELECT' ? 'concept select' : 'random mix'}
+                  {s.questionCount} questions · {s.assemblyMode === 'CONCEPT_SELECT' ? 'concept select' : s.assemblyMode === 'RANDOM_MIX' ? 'random mix' : 'generated'}
                 </p>
               </div>
-              <span className="text-xs text-[var(--color-text-faint)] font-mono">{s.id}</span>
+              <button
+                onClick={() => togglePriority(s)}
+                className={`p-2 rounded-lg transition-colors ${s.priority ? 'text-[var(--color-warn)] bg-[var(--color-warn)]/12' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)]'}`}
+                title={s.priority ? 'Remove priority' : 'Mark as priority — students see this first'}
+              >
+                <Star size={15} fill={s.priority ? 'currentColor' : 'none'} />
+              </button>
             </Card>
           ))}
         </div>

@@ -11,6 +11,5 @@ export function decodeJwtPayload(token) {
 export function isTokenExpired(token) {
   const payload = decodeJwtPayload(token);
   if (!payload?.exp) return true;
-  // exp is in seconds since epoch; Date.now() is in milliseconds
   return Date.now() >= payload.exp * 1000;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { LayoutDashboard, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, BarChart3, BookOpen } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { Card, Badge, Spinner } from '../../components/ui';
 import ConsistencyPulse from '../../components/pulse/ConsistencyPulse';
@@ -8,6 +8,7 @@ import { getSessionSummary, getConceptAnalysis } from '../../api/quiz';
 
 const navItems = [
   { to: '/student', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/student/courses', label: 'Browse courses', icon: BookOpen },
   { to: '/student/results', label: 'My results', icon: BarChart3 },
 ];
 

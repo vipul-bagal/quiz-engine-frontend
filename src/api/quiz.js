@@ -34,3 +34,8 @@ export async function getMySessions() {
   const { data } = await client.get('/quiz/my-sessions');
   return data;
 }
+
+export async function getAvailableQuizzes() {
+  const { data } = await client.get('/quiz/available-quizzes');
+  return data;
+}

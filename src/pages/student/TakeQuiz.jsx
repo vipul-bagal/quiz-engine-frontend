@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, BarChart3, BookOpen, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { Button, Card, Badge, Spinner } from '../../components/ui';
 import { getNextQuestion, submitAnswer, completeSession } from '../../api/quiz';
 
 const navItems = [
   { to: '/student', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/student/courses', label: 'Browse courses', icon: BookOpen },
   { to: '/student/results', label: 'My results', icon: BarChart3 },
 ];
 

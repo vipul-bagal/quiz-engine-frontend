@@ -11,7 +11,7 @@ export async function generateQuestions({ file, courseId, courseContext, numQues
   const { data } = await client.post('/questions/generate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data;
+  return data; // { filename, courseId, questionSetId, requested, generated, questions }
 }
 
 export async function getMyQuestions({ page = 0, size = 20 }) {

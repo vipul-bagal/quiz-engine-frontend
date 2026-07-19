@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DashboardShell from '../../components/DashboardShell';
 import { instructorNavGroups } from '../../components/instructorNav';
 import { Button, Card, Input, Select, Badge, Spinner } from '../../components/ui';
 import { generateQuestions } from '../../api/questions';
+import { getMyCourses } from '../../api/courses';
 import { UploadCloud, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function GenerateQuiz() {
   const [file, setFile] = useState(null);
+  const [courses, setCourses] = useState(null);
   const [courseId, setCourseId] = useState('');
   const [courseContext, setCourseContext] = useState('');
   const [numQuestions, setNumQuestions] = useState(10);
@@ -15,15 +18,17 @@ export default function GenerateQuiz() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
+  useEffect(() => {
+    getMyCourses().then(setCourses).catch(() => setCourses([]));
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setResult(null);
 
-    if (!file) {
-      setError('Please select a PDF file.');
-      return;
-    }
+    if (!file) { setError('Please select a PDF file.'); return; }
+    if (!courseId) { setError('Please select a course.'); return; }
 
     setLoading(true);
     try {
@@ -44,6 +49,15 @@ export default function GenerateQuiz() {
         then audited by a self-critique gate before being saved.
       </p>
 
+      {courses && courses.length === 0 && (
+        <Card className="mb-6 !border-[var(--color-warn)]/40">
+          <p className="text-sm text-[var(--color-warn)]">
+            You need at least one course before generating a quiz.{' '}
+            <Link to="/instructor/courses" className="underline">Create one first</Link>.
+          </p>
+        </Card>
+      )}
+
       <Card className="mb-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -60,7 +74,12 @@ export default function GenerateQuiz() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Course ID" required placeholder="e.g. psych-101" value={courseId} onChange={(e) => setCourseId(e.target.value)} />
+            <Select label="Course" required value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+              <option value="">Select a course…</option>
+              {courses?.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
             <Select label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
               <option value="mixed">Mixed (recommended)</option>
               <option value="easy">Easy</option>
@@ -70,9 +89,9 @@ export default function GenerateQuiz() {
           </div>
 
           <Input
-            label="Course context"
+            label="Quiz context / topic"
             required
-            placeholder="e.g. Intro to Psychology, week 3 — nature vs nurture"
+            placeholder="e.g. Week 3 — nature vs nurture"
             value={courseContext}
             onChange={(e) => setCourseContext(e.target.value)}
           />
@@ -98,7 +117,7 @@ export default function GenerateQuiz() {
 
           {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading || !courses?.length} className="w-full">
             {loading ? (<><Spinner size={16} /> Generating — this can take a minute…</>) : 'Generate questions'}
           </Button>
         </form>
@@ -110,6 +129,9 @@ export default function GenerateQuiz() {
             <h2 className="font-[var(--font-display)] font-semibold">Generation result</h2>
             <Badge tone="accent">{result.generated}/{result.requested} saved</Badge>
           </div>
+          <p className="text-xs text-[var(--color-text-faint)] font-mono mb-4">
+            Saved as a new quiz — set ID: {result.questionSetId}
+          </p>
           <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
             {result.questions.map((q) => (
               <div key={q.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[var(--color-surface-raised)]">

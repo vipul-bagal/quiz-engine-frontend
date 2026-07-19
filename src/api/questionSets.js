@@ -14,3 +14,8 @@ export async function getMyQuestionSets({ page = 0, size = 20 }) {
   const { data } = await client.get('/question-sets/mine', { params: { page, size } });
   return data;
 }
+
+export async function setQuestionSetPriority(id, priority) {
+  const { data } = await client.patch(`/question-sets/${id}/priority`, { priority });
+  return data;
+}

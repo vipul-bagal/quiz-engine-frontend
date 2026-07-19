@@ -11,6 +11,7 @@ import Courses from './pages/instructor/Courses';
 import Students from './pages/instructor/Students';
 import MixQuiz from './pages/instructor/MixQuiz';
 import StudentHome from './pages/student/StudentHome';
+import BrowseCourses from './pages/student/BrowseCourses';
 import TakeQuiz from './pages/student/TakeQuiz';
 import ResultsList from './pages/student/ResultsList';
 import Results from './pages/student/Results';
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/instructor/analytics" element={<ProtectedRoute allowedRole="INSTRUCTOR"><Analytics /></ProtectedRoute>} />
 
         <Route path="/student" element={<ProtectedRoute allowedRole="STUDENT"><StudentHome /></ProtectedRoute>} />
+        <Route path="/student/courses" element={<ProtectedRoute allowedRole="STUDENT"><BrowseCourses /></ProtectedRoute>} />
         <Route path="/student/take-quiz/:sessionId" element={<ProtectedRoute allowedRole="STUDENT"><TakeQuiz /></ProtectedRoute>} />
         <Route path="/student/results" element={<ProtectedRoute allowedRole="STUDENT"><ResultsList /></ProtectedRoute>} />
         <Route path="/student/results/:sessionId" element={<ProtectedRoute allowedRole="STUDENT"><Results /></ProtectedRoute>} />

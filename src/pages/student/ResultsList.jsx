@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, BarChart3, BookOpen, ArrowRight } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { Card, Spinner } from '../../components/ui';
 import { getMySessions } from '../../api/quiz';
 
 const navItems = [
   { to: '/student', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/student/courses', label: 'Browse courses', icon: BookOpen },
   { to: '/student/results', label: 'My results', icon: BarChart3 },
 ];
 

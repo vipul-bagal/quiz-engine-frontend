@@ -9,15 +9,12 @@ const USER_KEY = 'quiz_engine_user';
 function loadValidSession() {
   const token = localStorage.getItem(TOKEN_KEY);
   const stored = localStorage.getItem(USER_KEY);
-
   if (!token || !stored) return null;
-
   if (isTokenExpired(token)) {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     return null;
   }
-
   return JSON.parse(stored);
 }
 
