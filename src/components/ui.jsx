@@ -78,3 +78,26 @@ export function Spinner({ size = 20 }) {
     </svg>
   );
 }
+
+export function Modal({ children, onClose, maxWidth = 'max-w-md' }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50" onClick={onClose}>
+      <div className={`w-full ${maxWidth}`} onClick={(e) => e.stopPropagation()}>
+        <Card>{children}</Card>
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmDialog({ title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel }) {
+  return (
+    <Modal onClose={onCancel} maxWidth="max-w-sm">
+      <h3 className="font-[var(--font-display)] font-semibold mb-2">{title}</h3>
+      <p className="text-sm text-[var(--color-text-muted)] mb-5">{message}</p>
+      <div className="flex gap-2 justify-end">
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>{confirmLabel}</Button>
+      </div>
+    </Modal>
+  );
+}

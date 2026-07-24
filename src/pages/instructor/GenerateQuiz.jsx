@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import DashboardShell from '../../components/DashboardShell';
 import { instructorNavGroups } from '../../components/instructorNav';
-import { Button, Card, Input, Select, Badge, Spinner } from '../../components/ui';
+import { Button, Card, Input, Select, Badge, Spinner, Modal } from '../../components/ui';
 import { generateQuestions } from '../../api/questions';
-import { getMyCourses } from '../../api/courses';
-import { UploadCloud, CheckCircle2, XCircle } from 'lucide-react';
+import { getMyCourses, createCourse } from '../../api/courses';
+import { UploadCloud, CheckCircle2, XCircle, Plus } from 'lucide-react';
 
 export default function GenerateQuiz() {
   const [file, setFile] = useState(null);
   const [courses, setCourses] = useState(null);
   const [courseId, setCourseId] = useState('');
+  const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [courseContext, setCourseContext] = useState('');
   const [numQuestions, setNumQuestions] = useState(10);
   const [difficulty, setDifficulty] = useState('mixed');
@@ -18,9 +18,11 @@ export default function GenerateQuiz() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
-  useEffect(() => {
-    getMyCourses().then(setCourses).catch(() => setCourses([]));
-  }, []);
+  function refreshCourses() {
+    getMyCourses().then((data) => setCourses(data.filter((c) => c.status !== 'ARCHIVED'))).catch(() => setCourses([]));
+  }
+
+  useEffect(() => { refreshCourses(); }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -49,15 +51,6 @@ export default function GenerateQuiz() {
         then audited by a self-critique gate before being saved.
       </p>
 
-      {courses && courses.length === 0 && (
-        <Card className="mb-6 !border-[var(--color-warn)]/40">
-          <p className="text-sm text-[var(--color-warn)]">
-            You need at least one course before generating a quiz.{' '}
-            <Link to="/instructor/courses" className="underline">Create one first</Link>.
-          </p>
-        </Card>
-      )}
-
       <Card className="mb-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -74,12 +67,30 @@ export default function GenerateQuiz() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Course" required value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-              <option value="">Select a course…</option>
-              {courses?.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </Select>
+            <div>
+              <span className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5 uppercase tracking-wide">Course</span>
+              <div className="flex gap-2">
+                <select
+                  required
+                  value={courseId}
+                  onChange={(e) => setCourseId(e.target.value)}
+                  className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] outline-none"
+                >
+                  <option value="">Select a course…</option>
+                  {courses?.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateCourse(true)}
+                  className="shrink-0 px-3 rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent-dim)]"
+                  title="Create a new course"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
             <Select label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
               <option value="mixed">Mixed (recommended)</option>
               <option value="easy">Easy</option>
@@ -123,6 +134,19 @@ export default function GenerateQuiz() {
         </form>
       </Card>
 
+      {showCreateCourse && (
+        <Modal onClose={() => setShowCreateCourse(false)}>
+          <InlineCreateCourse
+            onClose={() => setShowCreateCourse(false)}
+            onCreated={(newCourse) => {
+              setShowCreateCourse(false);
+              refreshCourses();
+              setCourseId(newCourse.id);
+            }}
+          />
+        </Modal>
+      )}
+
       {result && (
         <Card>
           <div className="flex items-center justify-between mb-4">
@@ -154,5 +178,42 @@ export default function GenerateQuiz() {
         </Card>
       )}
     </DashboardShell>
+  );
+}
+
+function InlineCreateCourse({ onClose, onCreated }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim()) { setError('Course name is required.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const newCourse = await createCourse({ name, description });
+      onCreated(newCourse);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not create course.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <h3 className="font-[var(--font-display)] font-semibold mb-4">New course</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input label="Course name" placeholder="e.g. Intro to Psychology" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+        {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+        <div className="flex gap-2 justify-end">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create & select'}</Button>
+        </div>
+      </form>
+    </>
   );
 }

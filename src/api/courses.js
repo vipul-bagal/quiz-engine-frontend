@@ -35,7 +35,17 @@ export async function rejectEnrollment(courseId, enrollmentId) {
   return data;
 }
 
-export async function addStudentToCourse(courseId, { email, password }) {
-  const { data } = await client.post(`/courses/${courseId}/students`, { email, password });
+export async function enrollExistingStudent(courseId, studentId) {
+  const { data } = await client.post(`/courses/${courseId}/students`, { studentId });
+  return data;
+}
+
+export async function setCourseArchived(courseId, archived) {
+  const { data } = await client.patch(`/courses/${courseId}/archive`, { archived });
+  return data;
+}
+
+export async function deleteCourse(courseId) {
+  const { data } = await client.delete(`/courses/${courseId}`);
   return data;
 }
