@@ -30,6 +30,11 @@ export async function getConceptAnalysis(sessionId) {
   return data;
 }
 
+export async function getSessionReview(sessionId) {
+  const { data } = await client.get(`/quiz/session/${sessionId}/review`);
+  return data;
+}
+
 export async function getMySessions() {
   const { data } = await client.get('/quiz/my-sessions');
   return data;
@@ -37,5 +42,15 @@ export async function getMySessions() {
 
 export async function getAvailableQuizzes() {
   const { data } = await client.get('/quiz/available-quizzes');
+  return data;
+}
+
+export async function getQuizReport(sessionId) {
+  const { data } = await client.get(`/quiz/session/${sessionId}/report`);
+  return data;
+}
+
+export async function getSessionInfo(sessionId) {
+  const { data } = await client.get(`/quiz/session/${sessionId}/info`);
   return data;
 }

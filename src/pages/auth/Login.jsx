@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Card, Input } from '../../components/ui';
@@ -10,6 +10,15 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState('');
+
+  useEffect(() => {
+    const msg = sessionStorage.getItem('session_expired_message');
+    if (msg) {
+      setSessionNotice(msg);
+      sessionStorage.removeItem('session_expired_message');
+    }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -51,6 +60,12 @@ export default function Login() {
             Sign in to continue to your quiz engine
           </p>
         </div>
+
+        {sessionNotice && (
+          <Card variant="elevated" className="mb-5 !border-[var(--color-warn)]/40">
+            <p className="text-sm text-[var(--color-warn)]">{sessionNotice}</p>
+          </Card>
+        )}
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">

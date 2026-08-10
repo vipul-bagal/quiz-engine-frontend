@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users2, Plus, Ban, CheckCircle2, Trash2 } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { instructorNavGroups } from '../../components/instructorNav';
-import { Card, Badge, Spinner, Button, Input, Modal, ConfirmDialog } from '../../components/ui';
+import { Card, Badge, Spinner, Button, Input, Modal, ConfirmDialog, EmptyState } from '../../components/ui';
 import { getAllStudents, createStudent, setStudentActive, deleteStudent } from '../../api/users';
 import { getMyStudents } from '../../api/analytics';
 
 export default function Students() {
+  const navigate = useNavigate();
   const [students, setStudents] = useState(null);
   const [stats, setStats] = useState(null); // per-student quiz stats, keyed by email
   const [showCreate, setShowCreate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleteError, setDeleteError] = useState('');
+  const [error, setError] = useState('');
 
   function refresh() {
-    getAllStudents().then(setStudents);
+    setError('');
+    getAllStudents()
+      .then(setStudents)
+      .catch(() => { setStudents([]); setError('Could not load students. Try refreshing the page.'); });
     getMyStudents().then((data) => {
       const map = {};
-      data.forEach((s) => { map[s.email] = s; });
+      data.forEach((s) => { map[s.userId] = s; });
       setStats(map);
     }).catch(() => setStats({}));
   }
@@ -56,24 +62,35 @@ export default function Students() {
 
       {students === null && <div className="flex justify-center py-12"><Spinner /></div>}
 
-      {students && students.length === 0 && (
-        <Card>
-          <div className="flex flex-col items-center text-center py-6">
-            <Users2 size={28} className="text-[var(--color-text-faint)] mb-3" />
-            <p className="text-sm text-[var(--color-text-muted)]">No student accounts yet.</p>
-          </div>
+      {error && (
+        <Card variant="elevated" className="mb-6 !border-[var(--color-danger)]/40">
+          <p className="text-sm text-[var(--color-danger)]">{error}</p>
         </Card>
+      )}
+
+      {students && students.length === 0 && (
+        <EmptyState
+          icon={Users2}
+          title="No student accounts yet"
+          description="Create a student account, or add existing students directly from a course's roster."
+          action={<Button className="!text-xs" onClick={() => setShowCreate(true)}>New student</Button>}
+        />
       )}
 
       {students && students.length > 0 && (
         <div className="space-y-2.5">
           {students.map((s) => {
-            const quizStats = stats?.[s.email];
+            const quizStats = stats?.[s.id];
             return (
-              <Card key={s.id} className="!p-4 flex items-center justify-between">
-                <div>
+              <Card
+                key={s.id}
+                variant="interactive"
+                className="!p-4 flex items-center justify-between"
+                onClick={() => navigate(`/instructor/students/${s.id}`)}
+              >
+                <div title={s.email}>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{s.email}</p>
+                    <p className="text-sm font-medium">{s.fullName}</p>
                     {s.active === false && <Badge tone="danger">deactivated</Badge>}
                   </div>
                   {quizStats && (
@@ -84,14 +101,14 @@ export default function Students() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleToggleActive(s)}
+                    onClick={(e) => { e.stopPropagation(); handleToggleActive(s); }}
                     title={s.active === false ? 'Reactivate account' : 'Deactivate account'}
                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-warn)] hover:bg-[var(--color-surface-raised)]"
                   >
                     {s.active === false ? <CheckCircle2 size={15} /> : <Ban size={15} />}
                   </button>
                   <button
-                    onClick={() => setConfirmDelete(s)}
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(s); }}
                     title="Delete account"
                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-surface-raised)]"
                   >
@@ -106,7 +123,7 @@ export default function Students() {
 
       {confirmDelete && (
         <ConfirmDialog
-          title={`Delete ${confirmDelete.email}?`}
+          title={`Delete ${confirmDelete.fullName}?`}
           message={deleteError || 'This permanently deletes the account. Only possible if they have no quiz history or enrollments.'}
           confirmLabel="Delete"
           danger
@@ -119,6 +136,8 @@ export default function Students() {
 }
 
 function CreateStudentModal({ onClose, onCreated }) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -129,7 +148,7 @@ function CreateStudentModal({ onClose, onCreated }) {
     setError('');
     setSaving(true);
     try {
-      await createStudent({ email, password });
+      await createStudent({ email, password, firstName, lastName });
       onCreated();
     } catch (err) {
       setError(err.response?.data?.error || 'Could not create student.');
@@ -142,6 +161,10 @@ function CreateStudentModal({ onClose, onCreated }) {
     <Modal onClose={onClose}>
       <h3 className="font-[var(--font-display)] font-semibold mb-4">New student account</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          <Input label="First name" required placeholder="Jane" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <Input label="Last name" required placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </div>
         <Input label="Email" type="email" required placeholder="student@university.edu" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Temporary password" type="password" required minLength={8} placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
         {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}

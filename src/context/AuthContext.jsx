@@ -23,7 +23,13 @@ export function AuthProvider({ children }) {
 
   const persistSession = useCallback((authResponse) => {
     localStorage.setItem(TOKEN_KEY, authResponse.token);
-    const userInfo = { email: authResponse.email, role: authResponse.role };
+    const userInfo = {
+      email: authResponse.email,
+      firstName: authResponse.firstName,
+      lastName: authResponse.lastName,
+      fullName: `${authResponse.firstName || ''} ${authResponse.lastName || ''}`.trim(),
+      role: authResponse.role,
+    };
     localStorage.setItem(USER_KEY, JSON.stringify(userInfo));
     setUser(userInfo);
   }, []);

@@ -1,145 +1,164 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Upload, Shuffle, Users2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Upload, Shuffle, Users2, BookOpen, Circle, ShieldCheck, ArrowRight } from 'lucide-react';
 import DashboardShell from '../../components/DashboardShell';
 import { instructorNavGroups } from '../../components/instructorNav';
-import { Card, Badge, Spinner, Button } from '../../components/ui';
+import { Card, Badge, Spinner, Button, StatCard, EmptyState } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { getMyAnalytics, getConceptStruggles, getMyStudents } from '../../api/analytics';
+import { getOverview } from '../../api/analytics';
+import { getMyQuestionSets } from '../../api/questionSets';
+import { getApprovalsSummary } from '../../api/approvals';
+
+function pendingCount(summary) {
+  if (!summary) return 0;
+  return (summary.courseEnrollments?.length || 0)
+    + (summary.courseEditorRequests?.length || 0)
+    + (summary.quizEditorRequests?.length || 0)
+    + (summary.quizAccessRequests?.length || 0);
+}
+
+function labelFor(item) {
+  switch (item.type) {
+    case 'COURSE_ENROLLMENT': return `${item.studentName} wants to enrol in ${item.courseName}`;
+    case 'COURSE_EDITOR': return `${item.instructorName} wants edit access to ${item.courseName}`;
+    case 'QUIZ_EDITOR': return `${item.instructorName} wants edit access to ${item.quizTitle}`;
+    case 'QUIZ_ACCESS': return `${item.studentName} wants access to ${item.quizTitle}`;
+    default: return '';
+  }
+}
 
 export default function InstructorHome() {
   const { user } = useAuth();
-  const [stats, setStats] = useState(null);
-  const [struggles, setStruggles] = useState(null);
-  const [students, setStudents] = useState(null);
+  const navigate = useNavigate();
+  const [overview, setOverview] = useState(null);
+  const [recentQuizzes, setRecentQuizzes] = useState(null);
+  const [approvals, setApprovals] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      getMyAnalytics().catch(() => null),
-      getConceptStruggles().catch(() => []),
-      getMyStudents().catch(() => []),
-    ]).then(([a, c, s]) => {
-      setStats(a);
-      setStruggles(c);
-      setStudents(s);
+      getOverview().catch(() => null),
+      getMyQuestionSets({ page: 0, size: 10 }).catch(() => ({ content: [] })),
+      getApprovalsSummary().catch(() => null),
+    ]).then(([o, sets, a]) => {
+      setOverview(o);
+      setRecentQuizzes(sets.content);
+      setApprovals(a);
       setLoading(false);
     });
   }, []);
 
-  const hasContent = stats && stats.totalQuestions > 0;
-  const hasStudentData = students && students.length > 0;
-  const topStruggles = (struggles || []).filter((c) => c.studentsAnswered > 0).slice(0, 5);
-  const completedSessions = students ? students.reduce((sum, s) => sum + s.completedSessions, 0) : 0;
+  const hasContent = overview && overview.totalQuizzes > 0;
+  const totalPending = pendingCount(approvals);
+
+  const allPendingItems = approvals ? [
+    ...(approvals.courseEnrollments || []),
+    ...(approvals.courseEditorRequests || []),
+    ...(approvals.quizEditorRequests || []),
+    ...(approvals.quizAccessRequests || []),
+  ] : [];
 
   return (
     <DashboardShell navGroups={instructorNavGroups}>
-      <h1 className="font-[var(--font-display)] text-2xl font-semibold mb-1.5">
-        Welcome, {user?.email?.split('@')[0]}
+      <h1 className="font-[var(--font-display)] text-[30px] font-semibold mb-1.5 tracking-tight">
+        Welcome, {user?.firstName || user?.fullName?.split(' ')[0]}
       </h1>
-      <p className="text-[var(--color-text-muted)] mb-8">
-        Here's what your students are struggling with — and what's ready to review.
-      </p>
+      <p className="text-[var(--color-text-muted)] mb-8">Here's what's happening across your courses and quizzes.</p>
 
       {loading && <div className="flex justify-center py-12"><Spinner /></div>}
 
-      {!loading && !hasContent && (
-        <Card>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            You haven't generated any questions yet. Upload a PDF to create your first quiz.
-          </p>
-          <Link to="/instructor/generate" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline">
-            Generate a quiz <ArrowRight size={14} />
-          </Link>
+      {!loading && totalPending > 0 && (
+        <Card variant="elevated" className="mb-8 !border-[var(--color-warn)]/40 bg-gradient-to-br from-[var(--color-warn-glow)] to-transparent">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={15} className="text-[var(--color-warn)]" />
+              <h2 className="font-[var(--font-display)] font-semibold text-sm">Awaiting your approval</h2>
+              <Badge tone="warn">{totalPending}</Badge>
+            </div>
+            <Link to="/instructor/approvals" className="text-xs text-[var(--color-accent)] hover:underline inline-flex items-center gap-1">
+              Review all <ArrowRight size={12} />
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {allPendingItems.slice(0, 3).map((item, i) => (
+              <p key={i} className="text-sm text-[var(--color-text-muted)] truncate">{labelFor(item)}</p>
+            ))}
+            {totalPending > 3 && (
+              <p className="text-xs text-[var(--color-text-faint)]">and {totalPending - 3} more…</p>
+            )}
+          </div>
         </Card>
+      )}
+
+      {!loading && !hasContent && (
+        <EmptyState
+          icon={Upload}
+          title="No quizzes yet"
+          description="Upload course material as a PDF to generate your first quiz, grounded in your own content."
+          action={
+            <Link to="/instructor/generate">
+              <Button className="!text-xs">Generate a quiz</Button>
+            </Link>
+          }
+        />
       )}
 
       {!loading && hasContent && (
         <>
-          {/* Headline feature: class-wide concept struggles */}
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-[var(--color-warn)]" />
-            <h2 className="font-[var(--font-display)] font-semibold text-sm">Concepts needing attention</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-[var(--font-display)] font-semibold text-sm">Recent quizzes</h2>
+            <Link to="/instructor/mix-quiz" className="text-xs text-[var(--color-accent)] hover:underline">View all</Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-3 mb-8 -mx-1 px-1">
+            {recentQuizzes?.map((q) => (
+              <Card key={q.id} variant="interactive" className="!p-5 min-w-[280px] max-w-[280px] min-h-[180px] flex flex-col justify-between shrink-0" onClick={() => navigate(`/instructor/quiz/${q.id}`)}>
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Circle size={8} className={q.publishStatus === 'PUBLISHED' ? 'text-[var(--color-accent)] fill-current' : 'text-[var(--color-text-faint)] fill-current'} />
+                  <span className="text-xs uppercase tracking-wide text-[var(--color-text-faint)] font-medium">
+                    {q.publishStatus === 'PUBLISHED' ? 'Published' : 'Draft'}
+                  </span>
+                </div>
+                <p className="text-[19px] font-medium truncate leading-snug">{q.title}</p>
+                <p className="text-sm text-[var(--color-text-faint)] font-mono mt-2">{q.questionCount} questions</p>
+                {q.courseNames?.length > 0 && (
+                  <p className="text-sm text-[var(--color-text-muted)] mt-1 truncate">{q.courseNames.join(', ')}</p>
+                )}
+              </Card>
+            ))}
+            {recentQuizzes?.length === 0 && (
+              <Card className="!p-4 min-w-[220px]"><p className="text-xs text-[var(--color-text-muted)]">No quizzes yet.</p></Card>
+            )}
           </div>
 
-          {!hasStudentData && (
-            <Card className="mb-8">
-              <p className="text-sm text-[var(--color-text-muted)]">
-                No student activity yet. Once students start taking quizzes, this section will surface
-                which concepts they're guessing on or not understanding, ranked by how many students struggled.
-              </p>
-            </Card>
-          )}
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard
+              label="Class activity"
+              icon={Users2}
+              value={overview.totalEnrolledStudents}
+              sub={`${overview.totalCourses} courses · ${overview.totalQuizzes} quizzes${overview.draftQuizzes > 0 ? ` · ${overview.draftQuizzes} draft` : ''}`}
+            />
 
-          {hasStudentData && topStruggles.length === 0 && (
-            <Card className="mb-8">
-              <p className="text-sm text-[var(--color-accent)]">
-                Nice — no concepts are showing a meaningful struggle rate right now.
-              </p>
-            </Card>
-          )}
-
-          {hasStudentData && topStruggles.length > 0 && (
-            <div className="space-y-2.5 mb-8">
-              {topStruggles.map((c) => (
-                <Card key={c.conceptGroupId} className="!p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{c.conceptName}</p>
-                      <p className="text-xs text-[var(--color-text-faint)] font-mono mt-0.5">
-                        course: {c.courseId} · {c.studentsAnswered} student{c.studentsAnswered === 1 ? '' : 's'} answered
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {c.guessed > 0 && <Badge tone="warn">{c.guessed} guessed</Badge>}
-                      {c.notUnderstood > 0 && <Badge tone="danger">{c.notUnderstood} not understood</Badge>}
-                      {c.mastered > 0 && <Badge tone="accent">{c.mastered} mastered</Badge>}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Class snapshot + quick actions */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <Card>
-              <div className="flex items-center gap-2 mb-3">
-                <Users2 size={15} className="text-[var(--color-text-muted)]" />
-                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Class activity</p>
+            <Card variant="interactive" className="flex flex-col justify-between">
+              <div>
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-accent)]/12 flex items-center justify-center mb-3">
+                  <Upload size={16} className="text-[var(--color-accent)]" />
+                </div>
+                <p className="text-sm font-medium mb-1">Create a new quiz</p>
+                <p className="text-xs text-[var(--color-text-muted)] mb-4 leading-relaxed">Upload a PDF and generate fresh questions.</p>
               </div>
-              <p className="font-[var(--font-display)] text-2xl font-semibold">
-                {students ? students.length : 0} <span className="text-sm text-[var(--color-text-muted)] font-body font-normal">students</span>
-              </p>
-              <p className="text-xs text-[var(--color-text-faint)] mt-1">{completedSessions} quizzes completed</p>
+              <Link to="/instructor/generate"><Button variant="secondary" className="w-full !text-xs">Generate quiz</Button></Link>
             </Card>
 
-            <Card>
-              <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)] mb-3">Quick actions</p>
-              <div className="flex gap-2">
-                <Link to="/instructor/generate">
-                  <Button variant="secondary" className="!py-2 !text-xs">
-                    <Upload size={13} /> Generate
-                  </Button>
-                </Link>
-                <Link to="/instructor/mix-quiz">
-                  <Button variant="secondary" className="!py-2 !text-xs">
-                    <Shuffle size={13} /> Mix quiz
-                  </Button>
-                </Link>
+            <Card variant="interactive" className="flex flex-col justify-between">
+              <div>
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-warn)]/12 flex items-center justify-center mb-3">
+                  <Shuffle size={16} className="text-[var(--color-warn)]" />
+                </div>
+                <p className="text-sm font-medium mb-1">Mix a quiz</p>
+                <p className="text-xs text-[var(--color-text-muted)] mb-4 leading-relaxed">Combine existing questions into a new set.</p>
               </div>
+              <Link to="/instructor/mix-quiz"><Button variant="secondary" className="w-full !text-xs">Mix quiz</Button></Link>
             </Card>
-          </div>
-
-          {/* Content health, demoted */}
-          <div className="flex items-center gap-6 text-xs text-[var(--color-text-faint)] font-mono border-t border-[var(--color-border)] pt-4">
-            <span>{stats.totalQuestions} questions</span>
-            <span>{stats.totalConcepts} concepts</span>
-            <span>{Object.keys(stats.byCourse).length} courses</span>
-            <span>{Math.round(stats.yieldRate * 100)}% critique yield</span>
-            <Link to="/instructor/analytics" className="text-[var(--color-accent)] hover:underline ml-auto">
-              Full analytics →
-            </Link>
           </div>
         </>
       )}

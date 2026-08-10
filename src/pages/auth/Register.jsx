@@ -7,7 +7,7 @@ import ConsistencyPulse from '../../components/pulse/ConsistencyPulse';
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', role: 'STUDENT' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'STUDENT' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +57,22 @@ export default function Register() {
               ))}
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="First name"
+                required
+                placeholder="Jane"
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              />
+              <Input
+                label="Last name"
+                required
+                placeholder="Doe"
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
+            </div>
             <Input
               label="Email"
               type="email"
